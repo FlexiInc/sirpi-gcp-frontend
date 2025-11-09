@@ -45,13 +45,13 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001 -G nodejs
 
-# Copy necessary files from builder
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+# Copy standalone server files
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 
-# Set proper permissions
-RUN chown -R nextjs:nodejs /app
+# Copy static files - CRITICAL for CSS/JS to work
+# These must be copied AFTER standalone to preserve the correct structure
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 USER nextjs
 
