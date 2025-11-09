@@ -118,6 +118,10 @@ export default function DeployPage() {
   const [isDestroying, setIsDestroying] = useState(false);
   const [showAWSSetup, setShowAWSSetup] = useState(false);
   const [isLoadingGcpCreds, setIsLoadingGcpCreds] = useState(true);
+  const [serviceInfo, setServiceInfo] = useState<{
+    minInstances: number;
+    maxInstances: number;
+  } | null>(null);
 
   // Check GCP credential status (for validation)
   const {
@@ -286,7 +290,7 @@ export default function DeployPage() {
         isStreaming: false,
       }));
 
-      // Refetch project to get application URL
+      // Refetch project to get application URL and service info
       setTimeout(async () => {
         if (project?.id) {
           console.log(
@@ -300,6 +304,11 @@ export default function DeployPage() {
               deployment_status: updatedProject.deployment_status,
             });
             setProject(updatedProject);
+
+            // Fetch service info for GCP projects
+            if (updatedProject.cloud_provider === "gcp") {
+              fetchServiceInfo(updatedProject.id);
+            }
           }
         }
       }, 3000);
@@ -444,131 +453,134 @@ export default function DeployPage() {
           }
 
           // Load previous deployment logs from database
-          // Only load logs if infrastructure is actively deployed
-          if (foundProject.deployment_status === "deployed") {
-          try {
-            const token = await (
-              window as unknown as ClerkWindow
-            ).Clerk?.session?.getToken();
+          // Load logs for any project that has had deployments (not just currently deployed)
+          if (
+            foundProject.deployment_status &&
+            foundProject.deployment_status !== "not_deployed"
+          ) {
+            try {
+              const token = await (
+                window as unknown as ClerkWindow
+              ).Clerk?.session?.getToken();
 
-            // Use cloud-specific endpoint
-            const logsEndpoint =
-              foundProject.cloud_provider === "gcp"
-                ? `/gcp/deployment/projects/${foundProject.id}/logs`
-                : `/deployment/projects/${foundProject.id}/logs`;
+              // Use cloud-specific endpoint
+              const logsEndpoint =
+                foundProject.cloud_provider === "gcp"
+                  ? `/gcp/deployment/projects/${foundProject.id}/logs`
+                  : `/deployment/projects/${foundProject.id}/logs`;
 
-            const logsResponse = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/api/v1${logsEndpoint}`,
-              {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              }
-            );
-
-            if (logsResponse.ok) {
-              const logsData = await logsResponse.json();
-              if (logsData.success && logsData.data.logs.length > 0) {
-                const sectionMap: Record<string, string> = {
-                  build_image: "build",
-                  plan: "plan",
-                  apply: "deploy",
-                  destroy: "destroy",
-                };
-
-                const initialSections: CollapsibleSection[] = [
-                  {
-                    id: "build",
-                    title: "Build Logs",
-                    logs: [],
-                    status: "idle",
-                    isExpanded: false,
+              const logsResponse = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/v1${logsEndpoint}`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
                   },
-                  {
-                    id: "plan",
-                    title: "Deployment Summary",
-                    logs: [],
-                    status: "idle",
-                    isExpanded: false,
-                  },
-                  {
-                    id: "deploy",
-                    title: "Deployment Logs",
-                    logs: [],
-                    status: "idle",
-                    isExpanded: false,
-                  },
-                ];
+                }
+              );
 
-                const restoredSections = [...initialSections];
+              if (logsResponse.ok) {
+                const logsData = await logsResponse.json();
+                if (logsData.success && logsData.data.logs.length > 0) {
+                  const sectionMap: Record<string, string> = {
+                    build_image: "build",
+                    plan: "plan",
+                    apply: "deploy",
+                    destroy: "destroy",
+                  };
 
-                logsData.data.logs.forEach((logRecord: LogRecord) => {
-                  const sectionId = sectionMap[logRecord.operation_type];
-                  if (sectionId) {
-                    const sectionIndex = restoredSections.findIndex(
-                      (s) => s.id === sectionId
-                    );
-                    if (sectionIndex >= 0) {
-                      restoredSections[sectionIndex] = {
-                        ...restoredSections[sectionIndex],
-                        logs: logRecord.logs || [],
-                        status:
-                          logRecord.status === "success"
-                            ? "success"
-                            : logRecord.status === "error"
-                            ? "error"
-                            : "idle",
-                        duration: logRecord.duration_seconds
-                          ? `${logRecord.duration_seconds}s`
-                          : undefined,
-                        isExpanded: false,
-                      };
+                  const initialSections: CollapsibleSection[] = [
+                    {
+                      id: "build",
+                      title: "Build Logs",
+                      logs: [],
+                      status: "idle",
+                      isExpanded: false,
+                    },
+                    {
+                      id: "plan",
+                      title: "Deployment Summary",
+                      logs: [],
+                      status: "idle",
+                      isExpanded: false,
+                    },
+                    {
+                      id: "deploy",
+                      title: "Deployment Logs",
+                      logs: [],
+                      status: "idle",
+                      isExpanded: false,
+                    },
+                  ];
+
+                  const restoredSections = [...initialSections];
+
+                  logsData.data.logs.forEach((logRecord: LogRecord) => {
+                    const sectionId = sectionMap[logRecord.operation_type];
+                    if (sectionId) {
+                      const sectionIndex = restoredSections.findIndex(
+                        (s) => s.id === sectionId
+                      );
+                      if (sectionIndex >= 0) {
+                        restoredSections[sectionIndex] = {
+                          ...restoredSections[sectionIndex],
+                          logs: logRecord.logs || [],
+                          status:
+                            logRecord.status === "success"
+                              ? "success"
+                              : logRecord.status === "error"
+                              ? "error"
+                              : "idle",
+                          duration: logRecord.duration_seconds
+                            ? `${logRecord.duration_seconds}s`
+                            : undefined,
+                          isExpanded: false,
+                        };
+                      }
                     }
-                  }
-                });
+                  });
 
-                setSections(restoredSections);
+                  setSections(restoredSections);
 
-                const hasCompletedBuild = logsData.data.logs.some(
-                  (l: LogRecord) =>
+                  const hasCompletedBuild = logsData.data.logs.some(
+                    (l: LogRecord) =>
                       l.operation_type === "build_image" &&
                       l.status === "success"
-                );
-                const hasCompletedPlan = logsData.data.logs.some(
-                  (l: LogRecord) =>
-                    l.operation_type === "plan" && l.status === "success"
-                );
-                const hasCompletedDeploy = logsData.data.logs.some(
-                  (l: LogRecord) =>
-                    l.operation_type === "apply" && l.status === "success"
-                );
+                  );
+                  const hasCompletedPlan = logsData.data.logs.some(
+                    (l: LogRecord) =>
+                      l.operation_type === "plan" && l.status === "success"
+                  );
+                  const hasCompletedDeploy = logsData.data.logs.some(
+                    (l: LogRecord) =>
+                      l.operation_type === "apply" && l.status === "success"
+                  );
 
-                if (hasCompletedDeploy) {
-                  setDeploymentState((prev) => ({
-                    ...prev,
-                    currentStep: "deployed",
-                    imagePushed: true,
-                    planGenerated: true,
-                    deployed: true,
-                  }));
-                } else if (hasCompletedPlan) {
-                  setDeploymentState((prev) => ({
-                    ...prev,
-                    currentStep: "planned",
-                    imagePushed: true,
-                    planGenerated: true,
-                  }));
-                } else if (hasCompletedBuild) {
-                  setDeploymentState((prev) => ({
-                    ...prev,
-                    currentStep: "built",
-                    imagePushed: true,
-                  }));
+                  if (hasCompletedDeploy) {
+                    setDeploymentState((prev) => ({
+                      ...prev,
+                      currentStep: "deployed",
+                      imagePushed: true,
+                      planGenerated: true,
+                      deployed: true,
+                    }));
+                  } else if (hasCompletedPlan) {
+                    setDeploymentState((prev) => ({
+                      ...prev,
+                      currentStep: "planned",
+                      imagePushed: true,
+                      planGenerated: true,
+                    }));
+                  } else if (hasCompletedBuild) {
+                    setDeploymentState((prev) => ({
+                      ...prev,
+                      currentStep: "built",
+                      imagePushed: true,
+                    }));
+                  }
                 }
               }
-            }
-          } catch (logError) {
-            console.error("Failed to load deployment logs:", logError);
+            } catch (logError) {
+              console.error("Failed to load deployment logs:", logError);
             }
           }
 
@@ -707,8 +719,8 @@ export default function DeployPage() {
           ? `/api/v1/gcp/deployment/projects/${project.id}/${operation}`
           : `/api/v1/deployment/projects/${project.id}/${operation}`;
 
-      // For long operations (apply/destroy), don't wait for HTTP response - rely on SSE
-      const isLongOperation = operation === "apply";
+      // For long operations (build/apply/destroy), don't wait for HTTP response - rely on SSE
+      const isLongOperation = operation === "apply" || operation === "build_image";
 
       if (isLongOperation) {
         // Fire and forget - SSE will handle all updates
@@ -787,6 +799,35 @@ export default function DeployPage() {
     }
   };
 
+  // Fetch Cloud Run service info
+  const fetchServiceInfo = async (projectId: string) => {
+    try {
+      const response = await apiCall(
+        `/gcp/deployment/projects/${projectId}/service-info`
+      );
+      const data = await response.json();
+      if (data.success && data.data.deployed) {
+        setServiceInfo({
+          minInstances: data.data.scaling.min_instances,
+          maxInstances: data.data.scaling.max_instances,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to fetch service info:", error);
+    }
+  };
+
+  // Fetch service info when project is deployed
+  useEffect(() => {
+    if (
+      project?.id &&
+      project.cloud_provider === "gcp" &&
+      project.deployment_status === "deployed"
+    ) {
+      fetchServiceInfo(project.id);
+    }
+  }, [project?.id, project?.deployment_status, project?.cloud_provider]);
+
   const handleDestroy = async () => {
     if (!project) return;
 
@@ -836,11 +877,11 @@ export default function DeployPage() {
 
       // Fire and forget - SSE will handle all updates (destroy can take >100 seconds)
       fetch(`${process.env.NEXT_PUBLIC_API_URL}${endpoint}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
       }).catch(() => {
         // Ignore network timeouts - SSE stream is already handling the operation
         console.log(
@@ -1205,7 +1246,9 @@ export default function DeployPage() {
                             Auto-scaling
                           </div>
                           <div className="text-xs text-gray-600 mt-0.5">
-                            0 to 10 instances
+                            {serviceInfo
+                              ? `${serviceInfo.minInstances} to ${serviceInfo.maxInstances} instances`
+                              : "Loading..."}
                           </div>
                         </div>
                       </div>

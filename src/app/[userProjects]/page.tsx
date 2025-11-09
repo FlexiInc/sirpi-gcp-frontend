@@ -251,7 +251,7 @@ function ProjectsGrid({
 }) {
   return (
     <div className="px-60">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {projects.map((project) => (
           <ProjectCard
             key={project.id}
@@ -279,19 +279,49 @@ function ProjectCard({
     
     switch (status.toLowerCase()) {
       case "deployed":
+        return {
+          bg: "#10b981",
+          text: "#ffffff",
+        };
       case "completed":
-        return "#22c55e"; // green
+      case "ready_for_deployment":
+        return {
+          bg: "#3b82f6",
+          text: "#ffffff",
+        };
       case "deploying":
       case "generating":
+        return {
+          bg: "#f59e0b",
+          text: "#ffffff",
+        };
       case "pending":
-        return "#f59e0b"; // yellow
+        return {
+          bg: "#6b7280",
+          text: "#ffffff",
+        };
       case "failed":
       case "deployment_failed":
-        return "#ef4444"; // red
-      case "aws_verified":
-        return "#3b82f6"; // blue (ready to deploy)
+        return {
+          bg: "#ef4444",
+          text: "#ffffff",
+        };
+      case "destroyed":
+        return {
+          bg: "#dc2626",
+          text: "#ffffff",
+        };
+      case "pr_created":
+      case "pr_merged":
+        return {
+          bg: "#8b5cf6",
+          text: "#ffffff",
+        };
       default:
-        return "#6b7280"; // gray
+        return {
+          bg: "#6b7280",
+          text: "#ffffff",
+        };
     }
   };
 
@@ -303,22 +333,26 @@ function ProjectCard({
       case "deployed":
         return "Deployed";
       case "deploying":
-        return "Deploying...";
-      case "aws_verified":
-        return "Ready to Deploy";
+        return "Deploying";
+      case "ready_for_deployment":
+        return "Ready for Deployment";
       case "completed":
-        return "Generated";
+        return "Ready for Deployment";
       case "generating":
-        return "Generating...";
+        return "Generating";
       case "pending":
         return "Pending";
       case "failed":
       case "deployment_failed":
         return "Failed";
+      case "destroyed":
+        return "Destroyed";
+      case "pr_created":
+        return "PR Created";
       case "pr_merged":
         return "PR Merged";
       default:
-        return status;
+        return status.replace(/_/g, " ");
     }
   };
 
@@ -355,22 +389,20 @@ function ProjectCard({
       onClick={handleProjectClick}
     >
       {/* Project Header */}
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div>
-            <h3 className="text-white font-medium text-sm">{project.name}</h3>
-            {project.repository_name && (
-              <p className="text-xs text-gray-400">{project.repository_name}</p>
-            )}
-          </div>
+      <div className="flex items-start justify-between mb-4 gap-2">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-white font-medium text-sm">{project.name}</h3>
+          {project.repository_name && (
+            <p className="text-xs text-gray-400">{project.repository_name}</p>
+          )}
         </div>
 
         {/* Status Badge */}
         <div
-          className="px-2 py-1 rounded-full text-xs font-medium"
+          className="px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 self-start"
           style={{
-            backgroundColor: `${getStatusColor(project)}20`,
-            color: getStatusColor(project),
+            backgroundColor: getStatusColor(project).bg,
+            color: getStatusColor(project).text,
           }}
         >
           {getStatusText(project)}

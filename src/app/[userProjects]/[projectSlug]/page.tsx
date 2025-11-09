@@ -37,7 +37,12 @@ const INFRASTRUCTURE_TEMPLATES = [
     name: "Cloud Run",
     description: "Fully managed serverless containers with auto-scaling",
     provider: "GCP",
-    features: ["Auto-scaling", "Zero to N scaling", "Pay-per-use", "HTTPS built-in"],
+    features: [
+      "Auto-scaling",
+      "Zero to N scaling",
+      "Pay-per-use",
+      "HTTPS built-in",
+    ],
     recommended: true,
   },
   {
@@ -45,14 +50,20 @@ const INFRASTRUCTURE_TEMPLATES = [
     name: "GKE Autopilot",
     description: "Fully managed Kubernetes with optimized node provisioning",
     provider: "GCP",
-    features: ["Kubernetes", "Auto-provisioning", "High availability", "Workload identity"],
+    features: [
+      "Kubernetes",
+      "Auto-provisioning",
+      "High availability",
+      "Workload identity",
+    ],
     recommended: false,
   },
   // AWS Templates
   {
     id: "ecs-fargate",
     name: "ECS Fargate",
-    description: "Serverless container deployment with auto-scaling and load balancer",
+    description:
+      "Serverless container deployment with auto-scaling and load balancer",
     provider: "AWS",
     features: ["Auto-scaling", "Load Balancer", "Container Registry", "VPC"],
     recommended: false,
@@ -95,7 +106,7 @@ interface WorkflowState {
   error?: string;
   logs: AgentLog[];
   files: WorkflowFile[];
-  formattedLogs: string[];  // Formatted logs for display
+  formattedLogs: string[]; // Formatted logs for display
   workflowDuration?: string;
 }
 
@@ -123,8 +134,10 @@ export default function ProjectPage() {
     formattedLogs: [],
   });
   const [isGenerating, setIsGenerating] = useState(false);
-  const [showLogs, setShowLogs] = useState(true);  // Default expanded
-  const [workflowStartTime, setWorkflowStartTime] = useState<number | null>(null);
+  const [showLogs, setShowLogs] = useState(true); // Default expanded
+  const [workflowStartTime, setWorkflowStartTime] = useState<number | null>(
+    null
+  );
   const [eventSource, setEventSource] = useState<EventSource | null>(null);
   const [isCreatingPR, setIsCreatingPR] = useState(false);
   const [showAWSSetup, setShowAWSSetup] = useState(false);
@@ -199,22 +212,27 @@ export default function ProjectPage() {
           const restoredFiles = Array.isArray(generation.files)
             ? generation.files
             : [];
-          
+
           // Restore workflow logs (merge all stages into one)
           let allLogs: string[] = [];
           let totalDuration = 0;
-          
-          if (generation.workflow_logs && Array.isArray(generation.workflow_logs)) {
-            generation.workflow_logs.forEach((wlog: { logs?: string[]; duration_seconds?: number }) => {
-              if (wlog.logs && Array.isArray(wlog.logs)) {
-                allLogs = [...allLogs, ...wlog.logs];
+
+          if (
+            generation.workflow_logs &&
+            Array.isArray(generation.workflow_logs)
+          ) {
+            generation.workflow_logs.forEach(
+              (wlog: { logs?: string[]; duration_seconds?: number }) => {
+                if (wlog.logs && Array.isArray(wlog.logs)) {
+                  allLogs = [...allLogs, ...wlog.logs];
+                }
+                if (wlog.duration_seconds) {
+                  totalDuration += wlog.duration_seconds;
+                }
               }
-              if (wlog.duration_seconds) {
-                totalDuration += wlog.duration_seconds;
-              }
-            });
+            );
           }
-          
+
           setWorkflowState({
             status: "completed",
             message: "Infrastructure generated successfully!",
@@ -222,7 +240,8 @@ export default function ProjectPage() {
             logs: [],
             files: restoredFiles,
             formattedLogs: allLogs,
-            workflowDuration: totalDuration > 0 ? `${totalDuration}s` : undefined,
+            workflowDuration:
+              totalDuration > 0 ? `${totalDuration}s` : undefined,
           });
         } else if (generation.status === "failed") {
           setWorkflowState({
@@ -309,7 +328,11 @@ export default function ProjectPage() {
       const response = await workflowApi.startWorkflow({
         repository_url: project.repository_url,
         installation_id: installationId,
-        template_type: selectedTemplate as "cloud-run" | "gke-autopilot" | "ecs-fargate" | "lambda",
+        template_type: selectedTemplate as
+          | "cloud-run"
+          | "gke-autopilot"
+          | "ecs-fargate"
+          | "lambda",
         cloud_provider: cloudProvider,
         project_id: project.id,
       });
@@ -328,16 +351,18 @@ export default function ProjectPage() {
 
       es.addEventListener("log", (event) => {
         const log = JSON.parse(event.data);
-        
+
         // Format: TIME  [AGENT] Message
-        const time = new Date(log.timestamp).toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: true
+        const time = new Date(log.timestamp).toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: true,
         });
-        const formatted = `${time}  [${log.agent.toUpperCase()}] ${log.message}`;
-        
+        const formatted = `${time}  [${log.agent.toUpperCase()}] ${
+          log.message
+        }`;
+
         setWorkflowState((prev) => ({
           ...prev,
           logs: [...prev.logs, log],
@@ -348,12 +373,12 @@ export default function ProjectPage() {
 
       es.addEventListener("complete", async (event) => {
         const data = JSON.parse(event.data);
-        
+
         // Calculate total workflow duration
-        const duration = workflowStartTime 
+        const duration = workflowStartTime
           ? `${Math.round((Date.now() - workflowStartTime) / 1000)}s`
           : undefined;
-        
+
         setWorkflowState((prev) => ({
           ...prev,
           status: data.status === "completed" ? "completed" : "failed",
@@ -441,6 +466,9 @@ export default function ProjectPage() {
       setIsCreatingPR(true);
       toast.loading("Creating pull request...", { id: "create-pr" });
 
+      // Add a small delay to let any network transitions settle
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
       const result = await pullRequestsApi.createPR({
         project_id: project.id,
         generation_id: generationId,
@@ -463,6 +491,27 @@ export default function ProjectPage() {
       });
       window.open(result.pr_url, "_blank");
     } catch (error) {
+      // If PR creation failed, check if it was actually created (network error after creation)
+      try {
+        const prStatus = await pullRequestsApi.getPRStatus(project.id);
+        if (prStatus && prStatus.pr_url) {
+          // PR exists! The creation succeeded but we lost the response
+          setPrInfo({
+            pr_number: prStatus.pr_number,
+            pr_url: prStatus.pr_url,
+            branch: "", // We don't have this from status endpoint
+          });
+
+          toast.success(`Pull request #${prStatus.pr_number} was created!`, {
+            id: "create-pr",
+          });
+          window.open(prStatus.pr_url, "_blank");
+          return;
+        }
+      } catch {
+        // PR doesn't exist, show original error
+      }
+
       toast.error(
         error instanceof Error ? error.message : "Failed to create PR",
         { id: "create-pr" }
@@ -639,12 +688,16 @@ export default function ProjectPage() {
                       <div className="flex items-center gap-3 mb-2">
                         <div className="text-2xl">☁️</div>
                         <div>
-                          <div className="font-medium text-white">Google Cloud</div>
+                          <div className="font-medium text-white">
+                            Google Cloud
+                          </div>
                           <div className="text-xs text-gray-500">GCP</div>
                         </div>
                       </div>
                       {cloudProvider === "gcp" && (
-                        <div className="mt-2 text-xs text-blue-400">✓ Selected</div>
+                        <div className="mt-2 text-xs text-blue-400">
+                          ✓ Selected
+                        </div>
                       )}
                     </button>
 
@@ -662,12 +715,16 @@ export default function ProjectPage() {
                       <div className="flex items-center gap-3 mb-2">
                         <div className="text-2xl">🟠</div>
                         <div>
-                          <div className="font-medium text-white">Amazon Web Services</div>
+                          <div className="font-medium text-white">
+                            Amazon Web Services
+                          </div>
                           <div className="text-xs text-gray-500">AWS</div>
                         </div>
                       </div>
                       {cloudProvider === "aws" && (
-                        <div className="mt-2 text-xs text-orange-400">✓ Selected</div>
+                        <div className="mt-2 text-xs text-orange-400">
+                          ✓ Selected
+                        </div>
                       )}
                     </button>
                   </div>
@@ -678,7 +735,9 @@ export default function ProjectPage() {
                   <label className="block text-sm font-medium text-gray-300 mb-3">
                     Deployment Template
                   </label>
-                  {INFRASTRUCTURE_TEMPLATES.filter(t => t.provider === cloudProvider.toUpperCase()).map((template) => (
+                  {INFRASTRUCTURE_TEMPLATES.filter(
+                    (t) => t.provider === cloudProvider.toUpperCase()
+                  ).map((template) => (
                     <div
                       key={template.id}
                       className={`p-6 rounded-lg cursor-pointer transition-all border ${
@@ -802,10 +861,15 @@ export default function ProjectPage() {
               <WorkflowLogs
                 logs={workflowState.formattedLogs}
                 status={
-                  workflowState.status === "completed" ? "success" :
-                  workflowState.status === "failed" ? "error" :
-                  workflowState.status === "started" || workflowState.status === "analyzing" || workflowState.status === "generating" ? "running" :
-                  "idle"
+                  workflowState.status === "completed"
+                    ? "success"
+                    : workflowState.status === "failed"
+                    ? "error"
+                    : workflowState.status === "started" ||
+                      workflowState.status === "analyzing" ||
+                      workflowState.status === "generating"
+                    ? "running"
+                    : "idle"
                 }
                 duration={workflowState.workflowDuration}
                 isExpanded={showLogs}
@@ -915,7 +979,9 @@ export default function ProjectPage() {
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Cloud Provider</p>
                   <p className="text-sm text-gray-200 uppercase">
-                    {cloudProvider === "gcp" ? "Google Cloud (GCP)" : "Amazon Web Services (AWS)"}
+                    {cloudProvider === "gcp"
+                      ? "Google Cloud (GCP)"
+                      : "Amazon Web Services (AWS)"}
                   </p>
                 </div>
                 <div>

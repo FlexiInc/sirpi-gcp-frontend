@@ -127,7 +127,7 @@ export default function SirpiAssistant({ projectId }: SirpiAssistantProps) {
                   Sirpi AI Assistant
                 </h3>
                 <p className="text-xs text-gray-500">
-                  Powered by Amazon Nova Pro
+                  Powered by Google Gemini
                 </p>
               </div>
             </div>
@@ -144,7 +144,7 @@ export default function SirpiAssistant({ projectId }: SirpiAssistantProps) {
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse" />
               <span className="text-xs text-purple-300 font-medium">
-                Connected to AWS AgentCore Memory
+                Connected to Google ADK Memory
               </span>
             </div>
           </div>
@@ -159,10 +159,11 @@ export default function SirpiAssistant({ projectId }: SirpiAssistantProps) {
                 <div className="text-sm text-gray-400 space-y-3">
                   <p>I can help you with:</p>
                   <div className="text-sm space-y-1.5 pl-1">
-                    <p>• Getting your application URL</p>
-                    <p>• Understanding deployed resources</p>
-                    <p>• Explaining infrastructure details</p>
-                    <p>• Analyzing deployment errors</p>
+                    <p>• Managing GCP Cloud Run scaling</p>
+                    <p>• Analyzing infrastructure costs</p>
+                    <p>• Viewing deployment logs & status</p>
+                    <p>• Understanding AI-generated setup</p>
+                    <p>• Optimizing your configuration</p>
                   </div>
                 </div>
               </div>
@@ -328,27 +329,29 @@ export default function SirpiAssistant({ projectId }: SirpiAssistantProps) {
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => handleAsk("What's my application URL?")}
+                  onClick={() =>
+                    handleAsk("Show my current scaling configuration")
+                  }
                   className="text-xs px-3 py-1.5 bg-[#111111] text-gray-400 rounded-md border border-[#333333] hover:border-purple-500 hover:text-purple-300 transition-colors"
                   disabled={isAsking}
                 >
-                  Get app URL
+                  Check scaling
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleAsk("What resources were created?")}
+                  onClick={() => handleAsk("How much is this costing me?")}
                   className="text-xs px-3 py-1.5 bg-[#111111] text-gray-400 rounded-md border border-[#333333] hover:border-purple-500 hover:text-purple-300 transition-colors"
                   disabled={isAsking}
                 >
-                  List resources
+                  Cost estimate
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleAsk("Explain my infrastructure")}
+                  onClick={() => handleAsk("Show deployment status")}
                   className="text-xs px-3 py-1.5 bg-[#111111] text-gray-400 rounded-md border border-[#333333] hover:border-purple-500 hover:text-purple-300 transition-colors"
                   disabled={isAsking}
                 >
-                  Explain setup
+                  View status
                 </button>
               </div>
             )}

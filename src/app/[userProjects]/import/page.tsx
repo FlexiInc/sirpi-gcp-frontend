@@ -356,9 +356,11 @@ function RepoCard({
               style={{ color: "#A1A1A1" }}
             >
               {repository.language && <span>{repository.language}</span>}
-              <span>
-                Updated {new Date(repository.updated_at).toLocaleDateString()}
-              </span>
+              {repository.updated_at && (
+                <span>
+                  Updated {new Date(repository.updated_at).toLocaleDateString()}
+                </span>
+              )}
             </div>
           </div>
         </div>

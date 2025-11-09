@@ -12,7 +12,13 @@ interface WorkflowLogsProps {
   onToggle: () => void;
 }
 
-export default function WorkflowLogs({ logs, status, duration, isExpanded, onToggle }: WorkflowLogsProps) {
+export default function WorkflowLogs({
+  logs,
+  status,
+  duration,
+  isExpanded,
+  onToggle,
+}: WorkflowLogsProps) {
   const getStatusBadge = (status: "idle" | "running" | "success" | "error") => {
     switch (status) {
       case "running":
@@ -81,16 +87,12 @@ export default function WorkflowLogs({ logs, status, duration, isExpanded, onTog
             Workflow Logs
           </span>
           {logs.length > 0 && (
-            <span className="text-xs text-gray-700">
-              {logs.length} lines
-            </span>
+            <span className="text-xs text-gray-700">{logs.length} lines</span>
           )}
         </div>
         <div className="flex items-center gap-3">
           {duration && (
-            <span className="text-xs text-gray-500 font-mono">
-              {duration}
-            </span>
+            <span className="text-xs text-gray-500 font-mono">{duration}</span>
           )}
           {getStatusBadge(status)}
         </div>

@@ -1,187 +1,104 @@
 # Sirpi Frontend
 
-Next.js 15 frontend application for the Sirpi cloud deployment platform.
+Modern web interface for AI-powered GCP infrastructure automation. Built with Next.js 15 and React 19.
 
-## Structure
+## Features
 
-```
-frontend/
-├── src/
-│   ├── app/                    # Next.js App Router
-│   │   ├── [userProjects]/    # User project pages
-│   │   ├── api/               # API route handlers
-│   │   ├── github/            # GitHub OAuth callback
-│   │   ├── sign-in/           # Authentication pages
-│   │   └── sign-up/
-│   ├── components/            # React components
-│   ├── hooks/                 # Custom React hooks
-│   └── lib/                   # Utilities and API clients
-├── public/                    # Static assets
-└── package.json              # Dependencies
-```
+- One-click deployment from GitHub to Google Cloud Run
+- AI assistant for infrastructure management and troubleshooting
+- Real-time build and deployment logs
+- Secure authentication with Clerk and GCP OAuth 2.0
+- Encrypted environment variable management
+- Responsive dark theme design
 
-## Key Features
+## Quick Start
 
-### Pages
-- **Home** (`app/page.tsx`) - Landing page with project overview
-- **Deploy** (`app/[userProjects]/[projectSlug]/deploy/`) - Deployment interface with real-time logs
-- **Settings** (`app/[userProjects]/[projectSlug]/settings/`) - Project configuration
-- **Env Vars** (`app/[userProjects]/[projectSlug]/env-vars/`) - Environment variable management
+### Prerequisites
 
-### Components
-- `DeploymentLogs.tsx` - Real-time log streaming with SSE
-- `GCPSetupFlow.tsx` - GCP OAuth connection flow
-- `AWSSetupFlow.tsx` - AWS IAM role setup
-- `SirpiAssistant.tsx` - AI chat assistant for troubleshooting
-- `ProjectCard.tsx` - Project overview cards
-- `EnvVarManager.tsx` - Environment variable UI
+- Node.js 18+
+- Backend API running (see backend README)
 
-### Hooks
-- `useDeploymentLogs.ts` - SSE log streaming hook
-- `useGCPCredentialStatus.ts` - GCP credential validation
-- `useAgentLogs.ts` - AI agent log streaming
-- `useDeploymentPolling.ts` - (Legacy) Polling-based logs
+### Installation
 
-### API Clients
-- `lib/api-client.ts` - Authenticated API wrapper
-- `lib/api/projects.ts` - Project API methods
-- `lib/api/deployments.ts` - Deployment API methods
-- `lib/api/github.ts` - GitHub integration
-
-## Running the Frontend
-
-### Development
 ```bash
 # Install dependencies
 npm install
 
-# Start dev server
+# Setup environment
+cp .env.example .env.local
+# Edit .env.local with your credentials (see .env.example for all required variables)
+
+# Run development server
 npm run dev
+# Open http://localhost:3000
 ```
 
-Visit `http://localhost:3000`
+### Environment Variables
 
-### Production Build
+See [.env.example](.env.example) for all required environment variables including:
+- Backend API URL
+- Clerk authentication keys
+- Optional Supabase configuration
+
+## How It Works
+
+1. Sign up and connect your GitHub account
+2. Authorize Sirpi to deploy to your Google Cloud project
+3. Import a repository and let AI agents analyze your code
+4. Deploy to Cloud Run with one click
+5. Manage scaling and monitor costs via AI assistant
+
+## AI Assistant
+
+Chat with the AI assistant to manage your infrastructure. Ask questions like:
+- "Show my current scaling configuration"
+- "Set min instances to 2 and max to 5"
+- "How much is this costing me?"
+- "Why did my deployment fail?"
+
+The assistant can check service details, update scaling, estimate costs, analyze logs, and explain infrastructure decisions.
+
+## Tech Stack
+
+- Next.js 15 - React framework with App Router
+- React 19 - UI library
+- TypeScript - Type safety
+- Tailwind CSS - Styling
+- Clerk - Authentication
+- Server-Sent Events - Real-time logs
+
+## Development
+
 ```bash
-# Build for production
-npm run build
+# Linting
+npm run lint
 
-# Start production server
+# Type checking
+npx tsc --noEmit
+
+# Production build
+npm run build
 npm start
 ```
 
-## Environment Variables
+## Deployment
 
-Create `.env.local`:
-
-```env
-# Backend API
-NEXT_PUBLIC_API_URL=http://localhost:8000
-
-# Clerk Authentication
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
-CLERK_SECRET_KEY=sk_test_...
-
-# Supabase (for direct access if needed)
-NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJxxx...
-```
-
-## Styling
-
-- **Tailwind CSS** - Utility-first CSS framework
-- **Custom Theme** - Dark theme with blue accents
-- **Responsive Design** - Mobile-first approach
-
-Configuration in:
-- `tailwind.config.ts` - Tailwind configuration
-- `app/globals.css` - Global styles and CSS variables
-
-## Authentication
-
-Authentication is handled by Clerk:
-- Sign up/Sign in pages
-- Protected routes via middleware
-- User profile management
-- Session handling
-
-Protected routes are defined in `src/middleware.ts`.
-
-## Real-time Features
-
-### Server-Sent Events (SSE)
-The app uses SSE for real-time log streaming during deployments:
-
-```typescript
-// Example usage
-const { logs, isConnected, isComplete } = useDeploymentLogs(
-  projectId,
-  enabled
-);
-```
-
-Events:
-- `connected` - Connection established
-- `log` - Log message
-- `complete` - Operation complete
-- `error` - Error occurred
-- `timeout` - Stream timeout
-
-## API Integration
-
-All API calls go through the authenticated `apiCall` wrapper:
-
-```typescript
-import { apiCall } from '@/lib/api-client';
-
-const response = await apiCall('/projects', {
-  method: 'POST',
-  body: JSON.stringify(data)
-});
-```
-
-This automatically:
-- Adds authentication headers
-- Handles errors
-- Parses JSON responses
-
-## TypeScript
-
-The project uses strict TypeScript for type safety:
-- Interface definitions for all data models
-- Type-safe API responses
-- React component prop types
-
-## Development Tips
-
-### Hot Reload
-Next.js automatically reloads on file changes.
-
-### Debugging
-- Use React DevTools for component inspection
-- Check browser console for errors
-- Network tab for API calls
-
-### Building
+### Docker
 ```bash
-# Check for build errors
-npm run build
-
-# Run linter
-npm run lint
-
-# Type check
-npx tsc --noEmit
+docker build -t sirpi-frontend .
+docker run -p 3000:3000 sirpi-frontend
 ```
 
-## Dependencies
+### Vercel
+```bash
+npm i -g vercel
+vercel --prod
+```
 
-Core:
-- `next` - React framework
-- `react` & `react-dom` - UI library
-- `@clerk/nextjs` - Authentication
-- `tailwindcss` - Styling
-- `typescript` - Type safety
-- `react-hot-toast` - Notifications
-
-See `package.json` for complete list.
+### Cloud Run
+```bash
+gcloud run deploy sirpi-frontend \
+  --source . \
+  --region us-central1 \
+  --allow-unauthenticated
+```
